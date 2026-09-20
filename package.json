@@ -1,0 +1,25 @@
+{
+  "name": "accountability-call-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A personal accountability agent that calls you on a schedule using Twilio and the OpenAI Realtime SIP API.",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test",
+    "check": "node --check src/server.js && node --check src/realtime.js && node --check src/telephony.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "node-cron": "^4.2.1",
+    "openai": "^5.20.3",
+    "twilio": "^5.10.4",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {}
+}

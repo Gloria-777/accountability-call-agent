@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>自律回访助手</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>自律回访助手</h1>
+        <p id="connection-label">等待连接</p>
+      </div>
+      <button id="logout-button" class="quiet-button" type="button" hidden>
+        退出
+      </button>
+    </header>
+
+    <main>
+      <section id="login-view" class="login-view">
+        <form id="login-form" class="login-form">
+          <label for="token">管理令牌</label>
+          <div class="inline-form">
+            <input
+              id="token"
+              name="token"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+            <button type="submit">连接</button>
+          </div>
+          <p class="field-note">使用 .env 中的 ADMIN_TOKEN</p>
+          <p id="login-error" class="error-text" role="alert"></p>
+        </form>
+      </section>
+
+      <div id="dashboard" hidden>
+        <div class="dashboard-grid">
+          <section class="work-section" aria-labelledby="goal-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">当前回访内容</p>
+                <h2 id="goal-title">行动目标</h2>
+              </div>
+              <span id="save-status" class="muted"></span>
+            </div>
+            <form id="goal-form">
+              <label class="sr-only" for="goal">行动目标</label>
+              <textarea id="goal" maxlength="500" required></textarea>
+              <div class="form-footer">
+                <span id="goal-count" class="muted">0 / 500</span>
+                <button type="submit">保存目标</button>
+              </div>
+            </form>
+          </section>
+
+          <aside class="status-section" aria-labelledby="setup-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">运行状态</p>
+                <h2 id="setup-title">接入检查</h2>
+              </div>
+              <span id="ready-badge" class="status-badge">检查中</span>
+            </div>
+            <ul id="setup-list" class="setup-list"></ul>
+            <dl class="schedule-list">
+              <div>
+                <dt>拨打号码</dt>
+                <dd id="target-number">未配置</dd>
+              </div>
+              <div>
+                <dt>自动拨号</dt>
+                <dd id="schedule-state">关闭</dd>
+              </div>
+              <div>
+                <dt>时区</dt>
+                <dd id="schedule-timezone">-</dd>
+              </div>
+            </dl>
+            <button id="call-button" class="call-button" type="button" disabled>
+              立即呼叫
+            </button>
+          </aside>
+        </div>
+
+        <section class="history-section" aria-labelledby="history-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">最近记录</p>
+              <h2 id="history-title">回访历史</h2>
+            </div>
+            <button id="refresh-button" class="quiet-button" type="button">
+              刷新
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>触发方式</th>
+                  <th>通话状态</th>
+                  <th>完成情况</th>
+                  <th>下一步</th>
+                </tr>
+              </thead>
+              <tbody id="history-body"></tbody>
+            </table>
+            <p id="empty-history" class="empty-state">还没有回访记录</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
