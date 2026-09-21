@@ -16,6 +16,10 @@ function withoutTrailingSlash(value = "") {
   return value.replace(/\/+$/, "");
 }
 
+function isE164(value) {
+  return /^\+[1-9]\d{7,14}$/.test(value);
+}
+
 export function loadConfig(env = process.env) {
   return {
     port: integerFromEnv(env.PORT, 5050),
@@ -44,18 +48,18 @@ export function loadConfig(env = process.env) {
 
 export function getSetupStatus(config) {
   const checks = {
-    publicUrl: Boolean(config.publicBaseUrl?.startsWith("https://")),
+    publicUrl: /^https:\/\/[^\s]+$/i.test(config.publicBaseUrl),
     adminToken: config.adminToken.length >= 16,
-    targetNumber: /^\+[1-9]\d{7,14}$/.test(config.targetPhoneNumber),
+    targetNumber: isE164(config.targetPhoneNumber),
     twilio: Boolean(
-      config.twilioAccountSid &&
+      /^AC[a-zA-Z0-9]{8,}$/.test(config.twilioAccountSid) &&
         config.twilioAuthToken &&
-        config.twilioPhoneNumber,
+        isE164(config.twilioPhoneNumber),
     ),
     openai: Boolean(
-      config.openaiApiKey &&
-        config.openaiWebhookSecret &&
-        /^proj_/.test(config.openaiProjectId),
+      /^sk-[^\s]+/.test(config.openaiApiKey) &&
+        /^whsec_[^\s]+/.test(config.openaiWebhookSecret) &&
+        /^proj_[^\s]+/.test(config.openaiProjectId),
     ),
   };
 

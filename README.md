@@ -1,10 +1,46 @@
 # 自律回访助手
 
-一个面向个人使用的开源电话 Agent。它按计划拨打你自己的号码，用中文询问目标是否完成，并保存完成情况和下一步。
+[![CI](https://github.com/Gloria-777/accountability-call-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Gloria-777/accountability-call-agent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+一个任何人都可以部署的开源电话 Agent。它按计划拨打你配置的号码，用中文询问目标是否完成，并保存完成情况和下一步。
+
+**无需修改源码。** Fork 或克隆仓库后，只需在本地 `.env` 中填写自己的 OpenAI、Twilio、公网地址和手机号即可使用。密钥与手机号不会进入 Git。
 
 技术路径：Twilio 拨打电话，接通后通过 SIP 转到 OpenAI Realtime API。应用本身负责定时、鉴权、目标管理和回访记录。
 
-> 这是学习项目，不适合批量营销或拨打未经同意的人。默认关闭自动拨号，并且只能拨打环境变量中预先配置的一个号码。
+> 这是个人回访和学习项目，不适合批量营销或拨打未经同意的人。默认关闭自动拨号，并且只能拨打环境变量中预先配置的一个号码。
+
+## 最快开始
+
+```bash
+git clone https://github.com/Gloria-777/accountability-call-agent.git
+cd accountability-call-agent
+npm install
+npm run setup
+```
+
+`npm run setup` 会创建 `.env` 并自动生成随机管理令牌。然后打开 `.env`，填写下面这些值：
+
+| 配置 | 用途 | 示例格式 |
+| --- | --- | --- |
+| `PUBLIC_BASE_URL` | ngrok、Cloudflare Tunnel 或服务器的 HTTPS 地址 | `https://example.ngrok.app` |
+| `TARGET_PHONE_NUMBER` | 接听回访的号码 | `+8613800138000` |
+| `TWILIO_ACCOUNT_SID` | Twilio Account SID | `AC...` |
+| `TWILIO_AUTH_TOKEN` | Twilio Auth Token | 密钥 |
+| `TWILIO_PHONE_NUMBER` | 可拨号的 Twilio 号码 | `+14155550100` |
+| `OPENAI_API_KEY` | OpenAI Project API key | `sk-...` |
+| `OPENAI_WEBHOOK_SECRET` | OpenAI webhook 签名密钥 | `whsec_...` |
+| `OPENAI_PROJECT_ID` | OpenAI Project ID | `proj_...` |
+
+检查配置并启动：
+
+```bash
+npm run doctor
+npm start
+```
+
+浏览器打开 `http://localhost:5050`，使用 `.env` 里的 `ADMIN_TOKEN` 登录。第一次测试时保持 `ENABLE_SCHEDULER=false`。
 
 ## 你将学到什么
 
@@ -45,6 +81,7 @@ accountability-call-agent/
 |  |- store.js             本地 JSON 数据存储
 |  `- server.js            HTTP 路由和定时器
 |- test/                   不拨号的自动化测试
+|- scripts/                初始化与配置检查工具
 |- .env.example            配置模板
 `- package.json
 ```
@@ -63,7 +100,13 @@ accountability-call-agent/
 npm install
 ```
 
-复制配置模板：
+推荐运行初始化命令：
+
+```bash
+npm run setup
+```
+
+它会从 `.env.example` 创建 `.env`，并生成随机 `ADMIN_TOKEN`。如果喜欢手动复制，也可以使用：
 
 Windows PowerShell：
 
@@ -77,7 +120,11 @@ macOS 或 Linux：
 cp .env.example .env
 ```
 
-先只修改 `ADMIN_TOKEN`。使用至少 16 个字符的随机字符串，不要把 `.env` 上传到 GitHub。
+不要把 `.env` 上传到 GitHub。填写配置后可以随时运行以下命令自检，它只检查格式，不会拨打电话：
+
+```bash
+npm run doctor
+```
 
 启动程序：
 
@@ -191,30 +238,11 @@ npm run check
 
 测试覆盖配置检查、提示词、数据存储和 SIP TwiML 生成。GitHub Actions 会在每次推送时重复运行这些检查。
 
-## 第 8 步：上传 GitHub
+## 第 8 步：创建自己的版本
 
-确认 `.env` 没有被跟踪：
+在 GitHub 页面点击 **Use this template** 或 **Fork**，就能在自己的账号下创建一份。配置仍然只放在部署环境的 `.env` 中，绝不要提交 API key、Twilio token 或真实手机号。
 
-```bash
-git status
-```
-
-创建本地提交：
-
-```bash
-git init -b main
-git add .
-git commit -m "Initial personal accountability call agent"
-```
-
-在 GitHub 网站创建一个空仓库，例如 `accountability-call-agent`，不要勾选自动创建 README。然后执行 GitHub 提供的两条命令：
-
-```bash
-git remote add origin https://github.com/YOUR_NAME/accountability-call-agent.git
-git push -u origin main
-```
-
-第一次推送可能要求在浏览器中登录 GitHub。不要把 GitHub 密码或 API key 写进命令、代码或聊天记录。
+需要定制对话内容时，修改 `src/prompt.js`；只更换账号、API、号码和时间时不需要修改任何源码。
 
 ## 安全设计
 

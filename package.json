@@ -1,14 +1,32 @@
 {
   "name": "accountability-call-agent",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "A personal accountability agent that calls you on a schedule using Twilio and the OpenAI Realtime SIP API.",
+  "description": "A reusable accountability phone agent powered by Twilio and the OpenAI Realtime SIP API.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gloria-777/accountability-call-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Gloria-777/accountability-call-agent/issues"
+  },
+  "homepage": "https://github.com/Gloria-777/accountability-call-agent#readme",
+  "keywords": [
+    "openai",
+    "realtime-api",
+    "twilio",
+    "voice-agent",
+    "accountability"
+  ],
   "scripts": {
+    "setup": "node scripts/setup.js",
+    "doctor": "node scripts/doctor.js",
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check src/realtime.js && node --check src/telephony.js"
+    "check": "node --check src/server.js && node --check src/realtime.js && node --check src/telephony.js && node --check scripts/setup.js && node --check scripts/doctor.js"
   },
   "engines": {
     "node": ">=20"
