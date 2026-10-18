@@ -5,7 +5,7 @@ import { getSetupStatus, loadConfig } from "../src/config.js";
 test("scheduler stays disabled by default", () => {
   const config = loadConfig({});
   assert.equal(config.enableScheduler, false);
-  assert.equal(config.openaiRealtimeModel, "gpt-realtime-2.1-mini");
+  assert.equal(config.deepseekModel, "deepseek-flash");
 });
 
 test("setup is ready only when every external setting exists", () => {
@@ -16,9 +16,9 @@ test("setup is ready only when every external setting exists", () => {
     TWILIO_ACCOUNT_SID: "AC1234567890",
     TWILIO_AUTH_TOKEN: "secret",
     TWILIO_PHONE_NUMBER: "+14155550100",
-    OPENAI_API_KEY: "sk-test",
-    OPENAI_WEBHOOK_SECRET: "whsec_test",
-    OPENAI_PROJECT_ID: "proj_test",
+    DEEPSEEK_API_KEY: "sk-test",
+    DEEPSEEK_BASE_URL: "https://api.deepseek.com",
+    DEEPSEEK_MODEL: "deepseek-flash",
   });
 
   assert.equal(config.publicBaseUrl, "https://agent.example.com");
@@ -33,9 +33,9 @@ test("example placeholders are never treated as working credentials", () => {
     TWILIO_ACCOUNT_SID: "account-sid",
     TWILIO_AUTH_TOKEN: "auth-token",
     TWILIO_PHONE_NUMBER: "twilio-number",
-    OPENAI_API_KEY: "api-key",
-    OPENAI_WEBHOOK_SECRET: "webhook-secret",
-    OPENAI_PROJECT_ID: "project-id",
+    DEEPSEEK_API_KEY: "api-key",
+    DEEPSEEK_BASE_URL: "base-url",
+    DEEPSEEK_MODEL: "model",
   });
 
   assert.equal(getSetupStatus(config).readyToCall, false);

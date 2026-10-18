@@ -29,6 +29,7 @@ export function loadConfig(env = process.env) {
     callCron: env.CALL_CRON || "0 20 * * *",
     timeZone: env.TIME_ZONE || "Asia/Shanghai",
     maxCallSeconds: integerFromEnv(env.MAX_CALL_SECONDS, 240),
+    maxConversationTurns: integerFromEnv(env.MAX_CONVERSATION_TURNS, 6),
     targetPhoneNumber: env.TARGET_PHONE_NUMBER || "",
     twilioAccountSid: env.TWILIO_ACCOUNT_SID || "",
     twilioAuthToken: env.TWILIO_AUTH_TOKEN || "",
@@ -37,12 +38,13 @@ export function loadConfig(env = process.env) {
       env.VALIDATE_TWILIO_SIGNATURE,
       true,
     ),
-    openaiApiKey: env.OPENAI_API_KEY || "",
-    openaiWebhookSecret: env.OPENAI_WEBHOOK_SECRET || "",
-    openaiProjectId: env.OPENAI_PROJECT_ID || "",
-    openaiRealtimeModel:
-      env.OPENAI_REALTIME_MODEL || "gpt-realtime-2.1-mini",
-    openaiVoice: env.OPENAI_VOICE || "marin",
+    twilioSpeechLanguage: env.TWILIO_SPEECH_LANGUAGE || "cmn-Hans-CN",
+    twilioSayLanguage: env.TWILIO_SAY_LANGUAGE || "zh-CN",
+    deepseekApiKey: env.DEEPSEEK_API_KEY || "",
+    deepseekBaseUrl: withoutTrailingSlash(
+      env.DEEPSEEK_BASE_URL || "https://api.deepseek.com",
+    ),
+    deepseekModel: env.DEEPSEEK_MODEL || "deepseek-flash",
   };
 }
 
@@ -56,10 +58,10 @@ export function getSetupStatus(config) {
         config.twilioAuthToken &&
         isE164(config.twilioPhoneNumber),
     ),
-    openai: Boolean(
-      /^sk-[^\s]+/.test(config.openaiApiKey) &&
-        /^whsec_[^\s]+/.test(config.openaiWebhookSecret) &&
-        /^proj_[^\s]+/.test(config.openaiProjectId),
+    deepseek: Boolean(
+      /^sk-[^\s]+/.test(config.deepseekApiKey) &&
+        /^https:\/\/[^\s]+$/i.test(config.deepseekBaseUrl) &&
+        config.deepseekModel,
     ),
   };
 

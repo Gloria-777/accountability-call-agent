@@ -6,78 +6,21 @@ import { loadConfig, getSetupStatus } from "./config.js";
 import { JsonStore } from "./store.js";
 import {
   buildConnectTwiml,
+  buildFinalTwiml,
+  buildGatherTwiml,
   initiateCall,
   isValidTwilioRequest,
 } from "./telephony.js";
-import {
-  acceptRealtimeCall,
-  createOpenAIClient,
-  findSipHeader,
-  monitorRealtimeCall,
-  unwrapOpenAIWebhook,
-} from "./realtime.js";
+import { generateDeepSeekReply } from "./deepseek.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(currentDir, "..");
 const config = loadConfig();
 const store = new JsonStore(path.join(projectRoot, "data", "state.json"));
 const app = express();
-const openai = createOpenAIClient(config);
 const liveSessions = new Map();
 
 app.set("trust proxy", true);
-
-// This route must receive the untouched body for signature verification.
-app.post(
-  "/webhooks/openai",
-  express.raw({ type: "application/json" }),
-  async (req, res) => {
-    let event;
-    try {
-      event = await unwrapOpenAIWebhook(
-        openai,
-        req.body.toString("utf8"),
-        req.headers,
-      );
-    } catch (error) {
-      console.warn("Rejected invalid OpenAI webhook:", error.message);
-      return res.status(400).json({ error: "Invalid webhook signature" });
-    }
-
-    if (event.type !== "realtime.call.incoming") {
-      return res.status(200).json({ received: true });
-    }
-
-    const callId = event.data.call_id;
-    const twilioCallSid = findSipHeader(
-      event,
-      "X-Accountability-CallSid",
-    );
-
-    try {
-      const state = await store.read();
-      await store.linkOpenAICall(twilioCallSid, callId);
-      await acceptRealtimeCall({
-        config,
-        callId,
-        goal: state.goal.text,
-      });
-      const socket = monitorRealtimeCall({ config, callId, store });
-      liveSessions.set(callId, socket);
-      socket.once("close", () => liveSessions.delete(callId));
-      return res.status(200).json({ received: true });
-    } catch (error) {
-      console.error("Could not accept incoming SIP call:", error);
-      if (twilioCallSid) {
-        await store.updateByTwilioSid(twilioCallSid, {
-          status: "failed",
-          error: error.message,
-        });
-      }
-      return res.status(500).json({ error: "Could not accept SIP call" });
-    }
-  },
-);
 
 app.use(express.json({ limit: "32kb" }));
 app.use(express.urlencoded({ extended: false }));
@@ -143,9 +86,96 @@ app.post("/api/calls", requireAdmin, async (_req, res, next) => {
   }
 });
 
-app.post("/twilio/connect", requireValidTwilio, (req, res) => {
-  const xml = buildConnectTwiml(config, req.body?.CallSid);
-  res.type("text/xml").send(xml);
+app.post("/twilio/connect", requireValidTwilio, async (req, res, next) => {
+  try {
+    const callSid = String(req.body?.CallSid || "");
+    const state = await store.read();
+    liveSessions.set(callSid, {
+      goal: state.goal.text,
+      messages: [],
+      turnCount: 0,
+      emptyInputCount: 0,
+    });
+    await store.startConversation(callSid);
+    res.type("text/xml").send(buildConnectTwiml(config, state.goal.text));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/twilio/respond", requireValidTwilio, async (req, res) => {
+  const callSid = String(req.body?.CallSid || "");
+  const speech = String(req.body?.SpeechResult || "").trim().slice(0, 1000);
+  const session = liveSessions.get(callSid);
+
+  if (!session) {
+    return res
+      .type("text/xml")
+      .send(buildFinalTwiml(config, "这次通话状态已经失效，请稍后重试。再见。"));
+  }
+
+  if (!speech) {
+    session.emptyInputCount += 1;
+    if (session.emptyInputCount < 2) {
+      return res
+        .type("text/xml")
+        .send(buildGatherTwiml(config, "抱歉，我没有听清。请再说一次。"));
+    }
+
+    await store.saveCheckinByTwilioSid(callSid, {
+      status: "reschedule",
+      summary: "连续两次未识别到回答",
+      next_action: "稍后重新回访",
+      recordedAt: new Date().toISOString(),
+    });
+    liveSessions.delete(callSid);
+    return res
+      .type("text/xml")
+      .send(buildFinalTwiml(config, "我还是没有听清，我们稍后再聊。再见。"));
+  }
+
+  session.emptyInputCount = 0;
+  session.turnCount += 1;
+  session.messages.push({ role: "user", content: speech });
+
+  try {
+    const reply = await generateDeepSeekReply({
+      config,
+      goal: session.goal,
+      messages: session.messages,
+    });
+    session.messages.push({ role: "assistant", content: reply.spokenText });
+
+    const reachedTurnLimit = session.turnCount >= config.maxConversationTurns;
+    if (reply.done || reachedTurnLimit) {
+      const checkin = {
+        status: reply.status || "partial",
+        summary: reply.summary || `通话达到轮次上限，最后回答：${speech.slice(0, 120)}`,
+        next_action: reply.nextAction,
+        recordedAt: new Date().toISOString(),
+      };
+      await store.saveCheckinByTwilioSid(callSid, checkin);
+      liveSessions.delete(callSid);
+      const ending = reachedTurnLimit && !reply.done
+        ? `${reply.spokenText} 今天先聊到这里，再见。`
+        : reply.spokenText;
+      return res.type("text/xml").send(buildFinalTwiml(config, ending));
+    }
+
+    return res
+      .type("text/xml")
+      .send(buildGatherTwiml(config, reply.spokenText));
+  } catch (error) {
+    console.error("DeepSeek conversation failed:", error.message);
+    await store.updateByTwilioSid(callSid, {
+      status: "failed",
+      error: error.message,
+    });
+    liveSessions.delete(callSid);
+    return res
+      .type("text/xml")
+      .send(buildFinalTwiml(config, "抱歉，回访助手暂时无法响应，请稍后再试。再见。"));
+  }
 });
 
 app.post("/twilio/status", requireValidTwilio, async (req, res, next) => {
@@ -157,6 +187,9 @@ app.post("/twilio/status", requireValidTwilio, async (req, res, next) => {
       changes.durationSeconds = Number(req.body.CallDuration);
     }
     await store.updateByTwilioSid(req.body?.CallSid, changes);
+    if (["completed", "busy", "no-answer", "canceled", "failed"].includes(changes.status)) {
+      liveSessions.delete(req.body?.CallSid);
+    }
     res.sendStatus(204);
   } catch (error) {
     next(error);
@@ -194,7 +227,7 @@ const server = app.listen(config.port, () => {
 
 function shutdown() {
   scheduledTask?.stop();
-  for (const socket of liveSessions.values()) socket.close();
+  liveSessions.clear();
   server.close(() => process.exit(0));
 }
 

@@ -65,7 +65,6 @@ export class JsonStore {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       twilioCallSid: null,
-      openaiCallId: null,
       checkin: null,
       error: null,
     };
@@ -86,6 +85,19 @@ export class JsonStore {
     });
   }
 
+  async attachTwilioCall(id, twilioCallSid, providerStatus) {
+    return this.mutate((state) => {
+      const call = state.calls.find((item) => item.id === id);
+      if (!call) return null;
+      call.twilioCallSid = twilioCallSid;
+      if (!["in-progress", "checkin-recorded", "completed", "failed"].includes(call.status)) {
+        call.status = providerStatus || "initiated";
+      }
+      call.updatedAt = new Date().toISOString();
+      return call;
+    });
+  }
+
   async updateByTwilioSid(twilioCallSid, changes) {
     return this.mutate((state) => {
       const call = state.calls.find(
@@ -97,28 +109,32 @@ export class JsonStore {
     });
   }
 
-  async linkOpenAICall(twilioCallSid, openaiCallId) {
+  async startConversation(twilioCallSid) {
     return this.mutate((state) => {
-      const call = twilioCallSid
-        ? state.calls.find((item) => item.twilioCallSid === twilioCallSid)
-        : state.calls.find((item) =>
-            ["queued", "initiated", "ringing", "in-progress"].includes(
+      const call =
+        state.calls.find((item) => item.twilioCallSid === twilioCallSid) ??
+        state.calls.find(
+          (item) =>
+            !item.twilioCallSid &&
+            ["queued", "initiated", "ringing", "answered"].includes(
               item.status,
             ),
-          );
+        );
       if (!call) return null;
       Object.assign(call, {
-        openaiCallId,
-        status: "connected-to-agent",
+        twilioCallSid,
+        status: "in-progress",
         updatedAt: new Date().toISOString(),
       });
       return call;
     });
   }
 
-  async saveCheckin(openaiCallId, checkin) {
+  async saveCheckinByTwilioSid(twilioCallSid, checkin) {
     return this.mutate((state) => {
-      const call = state.calls.find((item) => item.openaiCallId === openaiCallId);
+      const call = state.calls.find(
+        (item) => item.twilioCallSid === twilioCallSid,
+      );
       if (!call) return null;
       call.checkin = checkin;
       call.status = "checkin-recorded";

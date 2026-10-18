@@ -5,7 +5,7 @@ const labels = {
   adminToken: "ADMIN_TOKEN (at least 16 characters)",
   targetNumber: "TARGET_PHONE_NUMBER (E.164)",
   twilio: "Twilio SID, token, and E.164 phone number",
-  openai: "OpenAI API key, webhook secret, and project ID",
+  deepseek: "DeepSeek API key, base URL, and model",
 };
 
 const status = getSetupStatus(loadConfig());

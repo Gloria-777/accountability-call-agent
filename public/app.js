@@ -27,7 +27,7 @@ const setupLabels = {
   adminToken: "管理令牌",
   targetNumber: "目标手机号",
   twilio: "Twilio 账户",
-  openai: "OpenAI 项目",
+  deepseek: "DeepSeek API",
 };
 
 const callStatusLabels = {
@@ -36,7 +36,6 @@ const callStatusLabels = {
   ringing: "正在响铃",
   answered: "已接听",
   "in-progress": "通话中",
-  "connected-to-agent": "已连接 Agent",
   "checkin-recorded": "已记录结果",
   completed: "已结束",
   busy: "忙线",

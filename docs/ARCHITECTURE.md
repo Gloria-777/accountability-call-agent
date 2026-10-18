@@ -1,30 +1,37 @@
 # Architecture notes
 
-## Why SIP instead of a media-stream bridge
+## Turn-based voice flow
 
-The application uses Twilio to dial the user's phone and `<Dial><Sip>` to bridge the answered call to the OpenAI Realtime SIP endpoint. OpenAI handles the telephony audio once the SIP leg is accepted.
+The application uses Twilio for the phone connection, speech recognition, and text-to-speech. After each recognized utterance, the server sends text conversation history to a DeepSeek-compatible Chat Completions endpoint. The model returns a small JSON object; the server validates it and lets Twilio read `spoken_text` back to the caller.
 
-This avoids maintaining a second bidirectional audio bridge in the application. The server still opens a sideband WebSocket for two reasons:
+```text
+Twilio call -> <Gather input="speech"> -> server -> DeepSeek
+     ^                                             |
+     |---------------- <Say> reply ----------------|
+```
 
-1. Tell the agent to speak first after the call is accepted.
-2. Receive and answer the `record_checkin` function call.
+This design avoids a bidirectional audio bridge and does not send audio to DeepSeek. It is intentionally turn-based, so short pauses occur between the caller's answer and the next prompt.
 
 ## Trust boundaries
 
 - Browser to application: bearer token from `ADMIN_TOKEN`.
-- Twilio to application: `X-Twilio-Signature` over the configured public URL and form body.
-- OpenAI to application: Standard Webhooks signature verified by the OpenAI SDK.
-- Application to OpenAI and Twilio: server-side API credentials from `.env`.
+- Twilio to application: `X-Twilio-Signature` over the public URL and form body.
+- Application to DeepSeek and Twilio: server-side credentials from `.env`.
+- No provider credential is sent to the browser or returned in API responses.
 
-No provider credential is sent to the browser.
+The DeepSeek error path records only a concise status message. It does not log response bodies, authentication headers, or full provider payloads.
 
-## Data model
+## Conversation state
 
-`data/state.json` stores one active goal and at most 100 call records. It is intentionally small and easy to inspect while learning. A multi-user or multi-process deployment should replace `JsonStore` with a transactional database.
+Active transcripts are held only in an in-memory `Map` keyed by Twilio `CallSid`. A session contains the goal, sanitized user/assistant text, turn count, and empty-input count. It is deleted when the call ends, fails, reaches its turn limit, or produces a final result.
+
+`data/state.json` stores one goal and at most 100 call records. A completed check-in contains only status, summary, next action, and timestamp; it does not persist the full transcript.
 
 ## Known limits
 
-- The scheduler runs only while the Node.js process is alive.
-- The local JSON store is for a single process and single user.
-- Telephony availability depends on the provider and destination country.
-- Realtime event schemas and model names can evolve; consult the current official documentation before upgrading dependencies or models.
+- The scheduler and active conversations exist only while one Node.js process is alive.
+- In-memory sessions and the JSON store are designed for one application instance and one user.
+- Restarting during a call invalidates that active conversation.
+- Telephony, recognition, and supported language availability depend on Twilio and the destination country.
+- A DeepSeek-compatible relay must support Chat Completions and JSON Output.
+- Model names and provider behavior can change; verify current official documentation before upgrades.

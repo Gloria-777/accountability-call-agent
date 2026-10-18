@@ -22,10 +22,11 @@ export async function initiateCall({ config, store, trigger }) {
       timeLimit: config.maxCallSeconds,
     });
 
-    return await store.updateCall(record.id, {
-      twilioCallSid: call.sid,
-      status: call.status || "initiated",
-    });
+    return await store.attachTwilioCall(
+      record.id,
+      call.sid,
+      call.status || "initiated",
+    );
   } catch (error) {
     await store.updateCall(record.id, {
       status: "failed",
@@ -48,22 +49,35 @@ export function isValidTwilioRequest(req, config) {
   );
 }
 
-export function buildConnectTwiml(config, twilioCallSid) {
+export function buildGatherTwiml(config, spokenText) {
   const response = new twilio.twiml.VoiceResponse();
-  response.say(
-    { language: "zh-CN" },
-    "你好，这是一通由人工智能生成的行动回访电话。正在连接你的回访助手。",
-  );
-
-  const dial = response.dial({
-    answerOnBridge: true,
-    timeLimit: config.maxCallSeconds,
+  const gather = response.gather({
+    input: "speech",
+    action: `${config.publicBaseUrl}/twilio/respond`,
+    method: "POST",
+    language: config.twilioSpeechLanguage,
+    speechTimeout: "auto",
+    timeout: 5,
+    actionOnEmptyResult: true,
   });
-  const customHeader = twilioCallSid
-    ? `?X-Accountability-CallSid=${encodeURIComponent(twilioCallSid)}`
-    : "";
-  dial.sip(
-    `sip:${config.openaiProjectId}@sip.api.openai.com;transport=tls${customHeader}`,
+  gather.say(
+    { language: config.twilioSayLanguage },
+    spokenText,
   );
+  return response.toString();
+}
+
+export function buildConnectTwiml(config, goal) {
+  const cleanGoal = goal?.trim() || "最近的行动目标";
+  return buildGatherTwiml(
+    config,
+    `你好，这是一通由人工智能生成的行动回访电话。你现在的目标是：${cleanGoal}。方便聊两分钟吗？`,
+  );
+}
+
+export function buildFinalTwiml(config, spokenText) {
+  const response = new twilio.twiml.VoiceResponse();
+  response.say({ language: config.twilioSayLanguage }, spokenText);
+  response.hangup();
   return response.toString();
 }

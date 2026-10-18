@@ -1,9 +1,9 @@
 {
   "name": "accountability-call-agent",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "A reusable accountability phone agent powered by Twilio and the OpenAI Realtime SIP API.",
+  "description": "A reusable Chinese accountability phone agent powered by Twilio and DeepSeek.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -14,8 +14,7 @@
   },
   "homepage": "https://github.com/Gloria-777/accountability-call-agent#readme",
   "keywords": [
-    "openai",
-    "realtime-api",
+    "deepseek",
     "twilio",
     "voice-agent",
     "accountability"
@@ -26,7 +25,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check src/realtime.js && node --check src/telephony.js && node --check scripts/setup.js && node --check scripts/doctor.js"
+    "check": "node --check src/server.js && node --check src/deepseek.js && node --check src/telephony.js && node --check scripts/setup.js && node --check scripts/doctor.js"
   },
   "engines": {
     "node": ">=20"
@@ -35,9 +34,7 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "node-cron": "^4.2.1",
-    "openai": "^5.20.3",
-    "twilio": "^5.10.4",
-    "ws": "^8.18.3"
+    "twilio": "^5.10.4"
   },
   "devDependencies": {}
 }

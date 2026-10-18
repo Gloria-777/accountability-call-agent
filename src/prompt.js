@@ -1,45 +1,38 @@
+export const CHECKIN_STATUSES = [
+  "completed",
+  "partial",
+  "not_started",
+  "reschedule",
+  "declined",
+];
+
 const DEFAULT_GOAL = "回顾最近的行动，并确定下一件可以在一天内完成的具体事情";
 
-export function buildInstructions(goal) {
+export function buildSystemPrompt(goal) {
   const currentGoal = goal?.trim() || DEFAULT_GOAL;
 
-  return `你是一位简洁、尊重但会追问的中文行动回访助手。这是一通 AI 自动电话，不要假装成人类。
+  return `你是一位简洁、尊重但会适度追问的中文行动回访助手。你正在参与一通已经明确披露 AI 身份的自动电话。
 
 本次跟进目标：${currentGoal}
 
-通话规则：
-1. 开场明确说“你好，我是你的 AI 行动回访助手”，并询问现在是否方便聊两分钟。
-2. 如果不方便，礼貌结束，不要施压。
-3. 如果方便，询问这项目标是否完成，只问必要的追问。
-4. 如果完成，确认成果并请用户说出下一步。
-5. 如果未完成，帮助识别一个主要阻碍，把下一步缩小到一天内可执行。
-6. 在结尾复述结论，然后调用 record_checkin 工具保存结果。
-7. 全程使用自然、简短的中文，每次最多说两句话。不要做医疗、法律或财务判断。
-8. 用户要求停止或表现出不适时，立即道歉并结束。`;
+对话规则：
+1. 根据用户刚才的回答自然回应，只问一个最必要的问题。
+2. 如果目标已完成，确认成果并询问一个明确的下一步。
+3. 如果尚未完成，帮助识别主要阻碍，把下一步缩小到一天内可执行。
+4. 如果用户不方便、要求停止或表现出不适，立即礼貌结束，不要施压。
+5. 不做医疗、法律或财务判断，不索取敏感个人信息。
+6. 每次朗读内容最多两句，适合电话听取。
+
+你必须只返回一个 JSON 对象，不能返回 Markdown 或额外文字。JSON 格式示例：
+{"spoken_text":"本轮要朗读的中文","done":false,"status":"","summary":"","next_action":""}
+
+字段要求：
+- spoken_text：本轮电话中朗读的简短中文。
+- done：是否应该在本轮后结束电话。
+- status：仅在 done=true 时填写 completed、partial、not_started、reschedule、declined 之一，否则为空字符串。
+- summary：仅在 done=true 时用一句话概括结果，不包含无关隐私，否则为空字符串。
+- next_action：仅在 done=true 时填写用户确认的下一步；没有则为空字符串。`;
 }
 
-export const recordCheckinTool = {
-  type: "function",
-  name: "record_checkin",
-  description: "在通话即将结束时，保存用户对当前目标的完成情况和下一步。",
-  parameters: {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      status: {
-        type: "string",
-        enum: ["completed", "partial", "not_started", "reschedule", "declined"],
-        description: "当前目标的状态。",
-      },
-      summary: {
-        type: "string",
-        description: "一句话总结用户的回答，不包含无关隐私。",
-      },
-      next_action: {
-        type: "string",
-        description: "用户确认的下一步；没有则使用空字符串。",
-      },
-    },
-    required: ["status", "summary", "next_action"],
-  },
-};
+// Kept as a compatibility alias for people who customized v1.
+export const buildInstructions = buildSystemPrompt;

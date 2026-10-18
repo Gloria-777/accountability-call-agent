@@ -33,6 +33,6 @@ if (!process.exitCode) {
   );
 
   console.log("Created .env with a random ADMIN_TOKEN.");
-  console.log("Fill in PUBLIC_BASE_URL, phone numbers, Twilio, and OpenAI values.");
+  console.log("Fill in PUBLIC_BASE_URL, phone numbers, Twilio, and DeepSeek values.");
   console.log("Then run: npm run doctor");
 }
